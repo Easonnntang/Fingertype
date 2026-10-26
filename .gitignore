@@ -1,0 +1,4 @@
+.pio/
+.vscode/
+.DS_Store
+src/web_page_data.h

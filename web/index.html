@@ -1,0 +1,1221 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fingertype 设置</title>
+<style>
+  /* 设计取向：设置类工具页（taste-skill 的 app-screen 规则 + hallmark 底线规则）
+     中性底色、一种强调色只用在状态和进度上、近黑主按钮、线形图标、无渐变无 emoji、
+     主页面改动即时自动保存，弹窗里才有明确的确认按钮。 */
+  :root {
+    --ground: #f6f7f8; --surface: #ffffff; --raised: #f2f3f5; --active: #eceef0;
+    --border: #e6e8eb; --rule: #eff1f3; --control: #cfd4da;
+    --text: #15171a; --muted: #5d636b; --faint: #6b7178;
+    --primary: #17191c; --on-primary: #ffffff;
+    --accent: #0f7a6c; --accent-soft: #e3f3f0;
+    --positive: #1f7a4d; --negative: #b4232a; --negative-soft: #fdeceb;
+    --warning-ink: #8a4b0b; --warning-soft: #fff6e5; --warning-line: #f3d79a;
+    --scrim: rgba(17, 19, 22, .42);
+    --radius-card: 10px; --radius-control: 7px; --radius-chip: 5px;
+    /* 对齐网格：面板内统一的左右边界、图标列、右侧控件列 */
+    --pad: 20px;          /* 面板内左右边距：所有行的第一个和最后一个元素都贴着它 */
+    --icon: 20px;         /* 行首图标宽度 */
+    --icon-gap: 12px;     /* 图标到文字的距离；名称、说明、关联标签都从这里开始 */
+    --ctl: 236px;         /* 设置项右侧控件列的宽度 */
+    --btn-w: 104px;       /* 设置项按钮的统一宽度 */
+    --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Helvetica Neue", sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, monospace;
+    --shadow-float: 0 18px 50px rgba(15, 18, 22, .18), 0 2px 8px rgba(15, 18, 22, .06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --ground: #0c0d0e; --surface: #151719; --raised: #1c1f22; --active: #23272b;
+      --border: #24282c; --rule: #1d2023; --control: #3c4248;
+      --text: #f2f4f5; --muted: #a7adb3; --faint: #949aa1;
+      --primary: #f2f4f5; --on-primary: #111315;
+      --accent: #3cc3ae; --accent-soft: #10302b;
+      --positive: #4cc28a; --negative: #f0646a; --negative-soft: #2c1617;
+      --warning-ink: #f2c56b; --warning-soft: #2a2110; --warning-line: #5a4519;
+      --scrim: rgba(0, 0, 0, .6);
+      --shadow-float: 0 18px 50px rgba(0, 0, 0, .55);
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html, body { overflow-x: clip; }
+  body { margin: 0; background: var(--ground); color: var(--text); font: 14px/1.55 var(--font); }
+  button, input, select { font: inherit; color: inherit; }
+  .hidden { display: none !important; }
+  svg.i { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: none; stroke-width: 1.7;
+          stroke-linecap: round; stroke-linejoin: round; }
+
+  /* ---- 顶栏与页脚 ---- */
+  .bar { position: sticky; top: 0; z-index: 5; background: var(--surface); border-bottom: 1px solid var(--border); }
+  .bar-in { max-width: 960px; margin: 0 auto; padding: 12px 24px; display: flex; align-items: center; gap: 12px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 15px; }
+  .brand .logo { width: 20px; height: 20px; color: var(--accent); stroke-width: 1.6; }
+  .brand .sep { width: 1px; height: 16px; background: var(--border); }
+  .bar .spacer { flex: 1; }
+  .conn { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 13px; }
+
+  /* ---- 按钮与控件 ---- */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 34px; padding: 0 14px;
+         border-radius: var(--radius-control); border: 1px solid var(--control); background: var(--surface);
+         cursor: pointer; white-space: nowrap; transition: background-color .12s, border-color .12s, opacity .12s; }
+  .btn:hover { background: var(--raised); }
+  .btn.primary { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+  .btn.primary:hover { opacity: .88; }
+  .btn.text { border-color: transparent; background: transparent; color: var(--muted); padding: 0 8px; }
+  .btn.text:hover { color: var(--text); background: var(--raised); }
+  .btn.danger { color: var(--negative); }
+  .btn.danger:hover { background: var(--negative-soft); }
+  .btn.danger.solid { background: var(--negative); border-color: var(--negative); color: #fff; }
+  .btn.big { height: 42px; padding: 0 20px; font-size: 15px; }
+  .btn.sm { height: 32px; padding: 0 12px; font-size: 13px; }
+  .btn:disabled { opacity: .5; cursor: default; }
+  input[type=text], input[type=password], input[type=number], select {
+    height: 34px; padding: 0 10px; border-radius: var(--radius-control); border: 1px solid var(--control);
+    background: var(--surface); min-width: 0; transition: border-color .12s; }
+  input::placeholder { color: var(--faint); }
+  select { padding-right: 28px; }
+  input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--primary); margin: 0; }
+  :is(.btn, input, select, summary):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; transition: none; }
+  label.check { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+
+  /* ---- 页面与分区（标签列 + 面板） ---- */
+  main { max-width: 960px; margin: 0 auto; padding: 28px 24px 32px; }
+  .notice { display: flex; gap: 10px; align-items: flex-start; padding: 12px 14px; border-radius: var(--radius-card);
+            background: var(--warning-soft); border: 1px solid var(--warning-line); color: var(--warning-ink); margin-bottom: 20px; }
+  .section { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 32px; padding: 28px 0; border-top: 1px solid var(--border); }
+  .section:first-of-type { border-top: 0; padding-top: 8px; }
+  .section h2 { font-size: 16px; font-weight: 600; margin: 4px 0 6px; }
+  .section .desc { color: var(--muted); margin: 0; }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card); }
+  .panel-foot { display: flex; align-items: center; gap: 10px; padding: 16px var(--pad); border-top: 1px solid var(--rule); }
+  .empty { padding: 22px var(--pad); color: var(--muted); }
+
+  /* ---- 列表行（指纹、密码） ---- */
+  .row { padding: 16px var(--pad); border-top: 1px solid var(--rule); }
+  .row:first-child { border-top: 0; }
+  .row-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .row-head > svg.i { color: var(--muted); width: var(--icon); height: var(--icon); margin-right: calc(var(--icon-gap) - 8px); }
+  .note { color: var(--muted); font-size: 13px; margin-top: 6px; }
+  .tag { display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: var(--radius-chip);
+         font-size: 12px; background: var(--accent-soft); color: var(--accent); white-space: nowrap; }
+  .tag.neutral { background: var(--raised); color: var(--muted); }
+  .saved { color: var(--positive); font-size: 12px; opacity: 0; transition: opacity .2s; white-space: nowrap; }
+  .saved.on { opacity: 1; }
+
+  /* 指纹行：名称和操作在同一行 */
+  .finger-line { display: grid; grid-template-columns: var(--icon) 168px minmax(0, 1fr) auto; column-gap: var(--icon-gap); align-items: center; }
+  .finger-line > svg.i { color: var(--muted); width: var(--icon); height: var(--icon); }
+  .finger-line .name { font-weight: 600; }
+  .finger-sub { display: flex; align-items: center; gap: 8px; margin: 8px 0 0 calc(var(--icon) + var(--icon-gap)); flex-wrap: wrap; }
+  .finger-sub .note { margin: 0; }
+  .action-editor .pick-line { display: flex; gap: 8px; }
+  .action-editor select { flex: 1; min-width: 0; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 10px 0 0 calc(var(--icon) + var(--icon-gap)); }
+  .chip { display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 4px 0 10px; border-radius: 999px;
+          background: var(--raised); font-size: 13px; }
+  .chip button { width: 20px; height: 20px; border: 0; border-radius: 50%; background: transparent; color: var(--muted); cursor: pointer;
+                 display: inline-flex; align-items: center; justify-content: center; }
+  .chip button:hover { background: var(--active); color: var(--text); }
+  .chip button svg.i { width: 12px; height: 12px; }
+  .bindsel { height: 28px; font-size: 13px; color: var(--muted); width: auto; }
+
+  /* 快捷键自定义 */
+  .custom { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 10px; }
+  .keycap { width: 150px; text-align: center; cursor: pointer; }
+
+  /* 设置项 */
+  /* 每行左右各一半：左半边是说明（写到面板正中间就换行），右半边放控件并贴右 */
+  .kv { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px; align-items: center;
+        padding: 16px var(--pad); border-top: 1px solid var(--rule); }
+  .kv:first-child { border-top: 0; }
+  .kv .k b { display: flex; align-items: center; gap: 10px; font-weight: 500; }
+  .kv .k > span { display: block; color: var(--muted); font-size: 13px; }
+  /* 中文两端对齐：每行右边缘都落在同一条边界上 */
+  .kv .k > span, .section .desc { text-align: justify; text-justify: inter-character; }
+  .kv .ctl { justify-self: end; width: var(--ctl); display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+  .kv .ctl select, .kv .ctl input { flex: 1; min-width: 0; }   /* 下拉框、输入框填满控件列，左边缘一致 */
+  .kv .ctl .btn { width: var(--btn-w); }                        /* 按钮统一宽度，右对齐 */
+  .ok { color: var(--positive); } .off { color: var(--faint); } .faint { color: var(--faint); }
+
+  details.log { margin-top: 24px; }
+  details.log summary { cursor: pointer; color: var(--muted); padding: 6px 0; }
+  details.log pre { margin: 8px 0 0; max-height: 240px; overflow: auto; font: 12px/1.5 var(--mono); color: var(--muted);
+                    white-space: pre-wrap; word-break: break-all; background: var(--surface); border: 1px solid var(--border);
+                    border-radius: var(--radius-card); padding: 12px; }
+
+  /* ---- 未连接时的欢迎页 ---- */
+  .welcome { max-width: 520px; margin: 9vh auto 0; text-align: center; }
+  .welcome .mark { width: 60px; height: 60px; stroke: var(--accent); stroke-width: 1.4; margin-bottom: 16px; }
+  .welcome h1 { font-size: 26px; font-weight: 600; letter-spacing: -.01em; margin: 0 0 8px; }
+  .welcome p { color: var(--muted); margin: 0 0 24px; }
+  .welcome .actions { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+
+  /* ---- 弹窗（全部居中） ---- */
+  .modal-bg { position: fixed; inset: 0; background: var(--scrim); display: flex; align-items: center; justify-content: center;
+              padding: 16px; z-index: 30; }
+  #fingerModal { z-index: 50; }   /* “请按手指”永远在最上层 */
+  #dialogModal { z-index: 60; }   /* 确认 / 提示框在它之上 */
+  .modal { background: var(--surface); border-radius: 14px; padding: 24px; width: 100%; max-width: 440px; box-shadow: var(--shadow-float); }
+  .modal h3 { margin: 0 0 6px; font-size: 18px; font-weight: 600; }
+  .modal > p { margin: 0 0 18px; color: var(--muted); white-space: pre-line; }
+  .modal .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+  .field { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; }
+  .field > span { font-weight: 500; font-size: 13px; }
+  .field small { color: var(--muted); font-size: 12px; }
+
+  .finger-modal { text-align: center; }
+  .finger-modal .glyph { width: 56px; height: 56px; stroke: var(--accent); stroke-width: 1.4; margin: 4px auto 14px; display: block; }
+  .finger-modal .glyph.warn { stroke: var(--warning-ink); }
+  .finger-modal > p { min-height: 44px; margin: 0 0 14px; }
+  .finger-modal > p.warn { color: var(--warning-ink); }
+  .steps { display: flex; justify-content: center; gap: 8px; margin: 0 0 20px; }
+  .steps span { width: 28px; height: 4px; border-radius: 2px; background: var(--border); }
+  .steps span.done { background: var(--positive); }
+  .steps span.now { background: var(--accent); }
+  .progress { height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; }
+  .progress span { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+
+  .toast { position: fixed; left: 50%; bottom: 28px; transform: translate(-50%, 12px); opacity: 0; z-index: 70;
+           background: var(--primary); color: var(--on-primary); padding: 10px 16px; border-radius: var(--radius-card);
+           box-shadow: var(--shadow-float); transition: opacity .2s, transform .2s; pointer-events: none; max-width: calc(100vw - 32px); }
+  .toast.on { opacity: 1; transform: translate(-50%, 0); }
+  .toast.err { background: var(--negative); color: #fff; }
+
+  @media (max-width: 760px) {
+    .section { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+    .bar-in, main { padding-left: 16px; padding-right: 16px; }
+    .conn .lbl { display: none; }
+    .finger-line { grid-template-columns: 18px minmax(0, 1fr) auto; }
+    .finger-line .action-editor { grid-column: 2 / -1; grid-row: 2; }
+    .kv { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+    .kv .ctl { justify-self: stretch; width: auto; justify-content: flex-start; }
+  }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<!-- 线形图标。指纹图标来自 Lucide（ISC 许可） -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-finger" viewBox="0 0 24 24"><path d="M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4"/><path d="M14 13.12c0 2.38 0 6.38-1 8.88"/><path d="M17.29 21.02c.12-.6.43-2.3.5-3.02"/><path d="M2 12a10 10 0 0 1 18-6"/><path d="M2 16h.01"/><path d="M21.8 16c.2-2 .131-5.354 0-6"/><path d="M5 19.5C5.5 18 6 15 6 12a6 6 0 0 1 .34-2"/><path d="M8.65 22c.21-.66.45-1.32.57-2"/><path d="M9 6.8a6 6 0 0 1 9 5.2v2"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.8-9.8"/><path d="m17 6 3 3"/><path d="m14.5 8.5 2 2"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-bt" viewBox="0 0 24 24"><path d="m7 7 10 10-5 4V3l5 4L7 17"/></symbol>
+  <symbol id="i-usb" viewBox="0 0 24 24"><path d="M12 3v14"/><path d="m9 6 3-3 3 3"/><circle cx="12" cy="19" r="2"/><path d="M7 10v2l5 3 5-3v-2"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2 20h20L12 3z"/><path d="M12 10v4M12 17h.01"/></symbol>
+</svg>
+
+<header class="bar">
+  <div class="bar-in">
+    <div class="brand">
+      <svg class="i logo" aria-hidden="true"><use href="#i-finger"/></svg>
+      <span class="sep"></span>Fingertype
+    </div>
+    <div class="spacer"></div>
+    <div class="conn" id="connInfo"><span class="lbl">未连接</span></div>
+    <button id="disconnectBtn" class="btn text hidden">断开</button>
+  </div>
+</header>
+
+<main>
+  <!-- 未连接 -->
+  <section id="welcome" class="welcome">
+    <svg class="i mark"><use href="#i-finger"/></svg>
+    <h1>连接 Fingertype</h1>
+    <p>请确认设备已在 Mac 的「系统设置 › 蓝牙」中配对。所有数据只在本页面与设备之间传输，密码写入后无法读出。</p>
+    <div class="actions">
+      <button id="connectBleBtn" class="btn primary big"><svg class="i"><use href="#i-bt"/></svg>通过蓝牙连接</button>
+      <button id="connectUsbBtn" class="btn text"><svg class="i"><use href="#i-usb"/></svg>通过 USB 连接（开发调试）</button>
+    </div>
+    <div id="noBrowser" class="notice hidden" style="margin-top:24px;text-align:left">
+      <svg class="i"><use href="#i-alert"/></svg>
+      <span>当前浏览器不支持网页蓝牙，请使用 Chrome 或 Edge 打开本页面。</span>
+    </div>
+  </section>
+
+  <!-- 已连接 -->
+  <div id="app" class="hidden">
+    <div id="notices"></div>
+
+    <section class="section">
+      <div>
+        <h2>指纹管理</h2>
+        <p class="desc">为每枚指纹指定识别后执行的操作：输入密码，或触发快捷键。</p>
+      </div>
+      <div class="panel">
+        <div id="fingerList"></div>
+        <div class="panel-foot">
+          <button id="addFingerBtn" class="btn primary"><svg class="i"><use href="#i-plus"/></svg>录入新指纹</button>
+          <button id="identifyBtn" class="btn text">测试识别</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div>
+        <h2>密码管理</h2>
+        <p class="desc">保存需要自动输入的密码并关联到指纹。密码加密存储在设备中，保存后不可查看。</p>
+      </div>
+      <div class="panel">
+        <div id="passwordList"></div>
+        <div class="panel-foot" id="passwordFoot">
+          <button id="addPasswordBtn" class="btn"><svg class="i"><use href="#i-plus"/></svg>新增密码</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div>
+        <h2>蓝牙连接</h2>
+        <p class="desc">只有已配对的电脑能接收输入。添加新电脑前需要验证指纹。</p>
+      </div>
+      <div class="panel">
+        <div class="kv"><div class="k"><b>连接状态</b><span id="bleStatus"></span></div><div class="ctl"></div></div>
+        <div class="kv">
+          <div class="k"><b>添加电脑</b><span id="pairingStatus"></span></div>
+          <div class="ctl"><button id="pairingBtn" class="btn">开放配对</button></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div>
+        <h2>高级设置</h2>
+        <p class="desc">设置入口与输入时机，通常无需调整。</p>
+      </div>
+      <div class="panel">
+        <div class="kv">
+          <div class="k"><b>设置入口指纹<span class="saved" id="summonSaved">已保存</span></b><span id="summonNote"></span></div>
+          <div class="ctl"><select id="summonSelect" aria-label="设置入口指纹"></select></div>
+        </div>
+        <div class="kv">
+          <div class="k"><b>唤醒等待<span class="saved" id="wakeSaved">已保存</span></b><span>屏幕亮起后等待多久再开始输入。若密码首字符丢失，请调大。</span></div>
+          <div class="ctl"><input id="wakeDelay" type="number" min="0" max="5000" step="100" aria-label="唤醒等待（毫秒）">
+            <span class="faint">毫秒</span></div>
+        </div>
+        <div class="kv">
+          <div class="k"><b>设备信息</b><span id="devInfo"></span></div>
+          <div class="ctl"><button id="fwBtn" class="btn">升级固件</button>
+            <input id="fwFile" type="file" accept=".bin" class="hidden" aria-label="选择固件文件"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div>
+        <h2>重置设备</h2>
+        <p class="desc">以下操作不可撤销。</p>
+      </div>
+      <div class="panel">
+        <div class="kv">
+          <div class="k"><b>解除所有配对</b><span>删除设备记住的所有电脑，之后需重新配对。</span></div>
+          <div class="ctl"><button id="clearBondsBtn" class="btn danger">解除配对</button></div>
+        </div>
+        <div class="kv">
+          <div class="k"><b>恢复出厂设置</b><span>清空全部指纹、密码与蓝牙配对。</span></div>
+          <div class="ctl"><button id="resetBtn" class="btn danger">恢复出厂</button></div>
+        </div>
+      </div>
+    </section>
+
+    <details class="log"><summary>通信日志</summary><pre id="log"></pre></details>
+  </div>
+</main>
+
+
+<!-- 请按手指（录入 / 验证 / 测试识别） -->
+<div id="fingerModal" class="modal-bg hidden" role="dialog" aria-modal="true" aria-labelledby="fingerTitle">
+  <div class="modal finger-modal">
+    <svg class="i glyph" id="fingerGlyph"><use href="#i-finger"/></svg>
+    <h3 id="fingerTitle"></h3>
+    <p id="fingerText"></p>
+    <div id="fingerSteps" class="steps"></div>
+    <button id="fingerCancelBtn" class="btn">取消</button>
+  </div>
+</div>
+
+<!-- 录入新指纹 -->
+<div id="enrollModal" class="modal-bg hidden" role="dialog" aria-modal="true" aria-labelledby="enrollTitle">
+  <form class="modal" id="enrollForm">
+    <h3 id="enrollTitle">录入新指纹</h3>
+    <p>填写名称并选择识别后的操作，开始后按提示按压 4 次。</p>
+    <label class="field"><span>名称</span>
+      <input type="text" id="enrollName" maxlength="8" placeholder="例如：右手食指" required></label>
+    <div class="field"><span>识别后</span><div id="enrollAction"></div></div>
+    <div class="actions">
+      <button type="button" class="btn" data-close>取消</button>
+      <button type="submit" class="btn primary">开始录入</button>
+    </div>
+  </form>
+</div>
+
+<!-- 新增 / 修改密码 -->
+<div id="passwordModal" class="modal-bg hidden" role="dialog" aria-modal="true" aria-labelledby="passwordTitle">
+  <form class="modal" id="passwordForm"></form>
+</div>
+
+<!-- 通用的确认 / 提示框（代替浏览器自带的 confirm、alert，居中显示） -->
+<div id="dialogModal" class="modal-bg hidden" role="alertdialog" aria-modal="true" aria-labelledby="dialogTitle">
+  <div class="modal">
+    <h3 id="dialogTitle"></h3>
+    <p id="dialogText"></p>
+    <div class="actions">
+      <button id="dialogCancel" class="btn">取消</button>
+      <button id="dialogOk" class="btn primary">确定</button>
+    </div>
+  </div>
+</div>
+
+<!-- 升级固件进度 -->
+<div id="otaModal" class="modal-bg hidden" role="dialog" aria-modal="true" aria-labelledby="otaTitle">
+  <div class="modal">
+    <h3 id="otaTitle">正在升级固件</h3>
+    <p id="otaText"></p>
+    <div class="progress"><span id="otaBar"></span></div>
+    <div class="actions"><button id="otaCancelBtn" class="btn">取消</button></div>
+  </div>
+</div>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script>
+const ERRORS = {
+  auth_required: '请先验证指纹',
+  locked: '指纹连续不匹配，设备已暂时锁定，请稍后再试',
+  timeout: '等待超时，未检测到手指',
+  not_matched: '指纹不匹配',
+  bad_index: '密码编号无效',
+  bad_name: '名称不能为空，最多 8 个汉字',
+  bad_password: '密码仅支持英文字母、数字和英文符号，最长 64 位',
+  save_failed: '保存失败：新增密码时必须填写密码',
+  bad_account: '密码无效',
+  bad_action: '操作设置无效：快捷键需要包含一个按键',
+  output_unavailable: '蓝牙和 USB 均未连接到电脑',
+  library_full: '指纹库已满',
+  already_enrolled: '这枚指纹已经录入过',
+  enroll_failed: '录入失败，请重试',
+  bad_finger: '指纹编号无效',
+  delete_failed: '删除失败',
+  bad_value: '数值需在 0–5000 之间',
+  module_offline: '指纹模块无响应，请检查接线',
+  unknown_command: '设备固件版本过旧，请更新固件',
+  bad_json: '通信数据格式错误',
+  cancelled: '已取消',
+  busy: '设备正在等待按压指纹，请先完成或取消当前操作',
+  ota_too_large: '固件文件太大，超出设备的程序分区',
+  ota_not_started: '升级已中断，请重新开始',
+  ota_offset: '升级已中断，请重新开始',
+  ota_incomplete: '固件数据不完整，请重新开始',
+  ota_bad_image: '这不是 Fingertype 的固件文件',
+  ota_write_failed: '写入固件失败',
+  ota_checksum: '固件校验失败，文件可能在传输中损坏',
+};
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const icon = (name) => `<svg class="i"><use href="#i-${name}"/></svg>`;
+
+let link = null;                                   // 当前连接：{ kind, write(text), close() }
+let port = null, reader = null, pipeDone = null;   // USB 串口专用
+const CFG_SERVICE = 'f1e70001-74a0-4461-b8ef-90a81cb4120e';  // 与固件 ble_keyboard.cpp 一致
+const CFG_RX = 'f1e70002-74a0-4461-b8ef-90a81cb4120e';
+const CFG_TX = 'f1e70003-74a0-4461-b8ef-90a81cb4120e';
+const BLE_CHUNK = 128;
+const BLE_FAST_CHUNK = 180;  // 升级固件时用无应答写入，每包不超过 macOS 的单次写入上限
+let nextId = 1;
+const pending = new Map();
+let state = null;
+
+function log(dir, text) {
+  const el = $('log');
+  el.textContent += `${dir} ${text}\n`;
+  el.scrollTop = el.scrollHeight;
+}
+
+function toast(text, isError = false) {
+  const t = $('toast');
+  t.textContent = text;
+  t.className = 'toast on' + (isError ? ' err' : '');
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => { t.className = 'toast' + (isError ? ' err' : ''); }, isError ? 4000 : 2200);
+}
+
+function flashSaved(el) {
+  if (!el) return;
+  el.classList.add('on');
+  clearTimeout(el.timer);
+  el.timer = setTimeout(() => el.classList.remove('on'), 1600);
+}
+
+// ---- 弹窗 ----
+function openModal(id) { $(id).classList.remove('hidden'); }
+function closeModal(id) { $(id).classList.add('hidden'); }
+document.addEventListener('click', (e) => {
+  if (e.target.matches('[data-close]')) closeModal(e.target.closest('.modal-bg').id);
+});
+
+// 居中的确认框，返回 true / false
+function ask(title, text, { ok = '确定', danger = false, cancel = '取消' } = {}) {
+  $('dialogTitle').textContent = title;
+  $('dialogText').textContent = text;
+  $('dialogOk').textContent = ok;
+  $('dialogOk').className = 'btn ' + (danger ? 'danger solid' : 'primary');
+  $('dialogCancel').textContent = cancel ?? '';
+  $('dialogCancel').classList.toggle('hidden', cancel === null);
+  openModal('dialogModal');
+  $('dialogOk').focus();
+  return new Promise((resolve) => {
+    const done = (v) => { closeModal('dialogModal'); $('dialogOk').onclick = $('dialogCancel').onclick = null; resolve(v); };
+    $('dialogOk').onclick = () => done(true);
+    $('dialogCancel').onclick = () => done(false);
+  });
+}
+const tell = (title, text) => ask(title, text, { ok: '知道了', cancel: null });
+
+// ---- 屏幕中间的“请按手指” ----
+function showFinger({ title, text, warn = false, step = 0, of = 0, done = 0 }) {
+  $('fingerGlyph').classList.toggle('warn', warn);
+  $('fingerTitle').textContent = title;
+  $('fingerText').textContent = text;
+  $('fingerText').className = warn ? 'warn' : '';
+  $('fingerSteps').innerHTML = Array.from({ length: of }, (_, i) =>
+    `<span class="${i < done ? 'done' : i === step - 1 ? 'now' : ''}"></span>`).join('');
+  $('fingerCancelBtn').disabled = false;
+  $('fingerCancelBtn').textContent = '取消';
+  openModal('fingerModal');
+}
+function hideFinger() { closeModal('fingerModal'); }
+$('fingerCancelBtn').onclick = async () => {
+  $('fingerCancelBtn').disabled = true;
+  $('fingerCancelBtn').textContent = '正在取消…';
+  try { await send('cancel', {}, 5000); } catch {}
+};
+
+function errorText(res) {
+  if (res.error === 'enroll_failed' && res.detail) return `录入失败：${res.detail}`;
+  return ERRORS[res.error] || res.error || '未知错误';
+}
+
+async function send(cmd, args = {}, timeoutMs = 120000) {
+  if (!link) throw new Error('设备未连接');
+  const id = nextId++;
+  const msg = JSON.stringify({ id, cmd, ...args });
+  if (cmd === 'otaData') { if (args.off === 0) log('→', '{"cmd":"otaData", …}（固件数据，不逐条记录）'); }
+  else log('→', msg.replace(/"password":"[^"]*"/, '"password":"••••"'));
+  const p = new Promise((resolve, reject) => {
+    const timer = setTimeout(() => { pending.delete(id); reject(new Error('设备无响应')); }, timeoutMs);
+    pending.set(id, (res) => { clearTimeout(timer); resolve(res); });
+  });
+  await link.write(msg + '\n', cmd === 'otaData');
+  return p;
+}
+
+// 执行命令；需要验证时先弹出“请按手指”，验证通过后重试一次
+async function run(cmd, args = {}) {
+  let res = await send(cmd, args);
+  if (!res.ok && res.error === 'auth_required') {
+    const auth = await send('auth');
+    if (!auth.ok) { hideFinger(); if (auth.error !== 'cancelled') toast(errorText(auth), true); return auth; }
+    res = await send(cmd, args);
+  }
+  hideFinger();
+  if (!res.ok && res.error !== 'cancelled') toast(errorText(res), true);
+  return res;
+}
+
+function handleMessage(msg) {
+  if (msg.re !== undefined && pending.has(msg.re)) {
+    const done = pending.get(msg.re);
+    pending.delete(msg.re);
+    done(msg);
+    return;
+  }
+  switch (msg.evt) {
+    case 'prompt':
+      showFinger(msg.msg === '请按已录入的手指'
+        ? { title: '验证指纹', text: '请按压任意一枚已录入的指纹' }
+        : { title: '请按压指纹', text: '将手指放在传感器上' });
+      break;
+    case 'enroll':
+      if (msg.action === 'press') {
+        showFinger({ title: `录入指纹（${msg.step}/${msg.of}）`, step: msg.step, of: msg.of, done: msg.step - 1,
+          text: msg.step === 1 ? '将手指平放在传感器上' : '再次按压，稍微调整手指角度' });
+      } else {
+        showFinger({ title: `录入指纹（${msg.step}/${msg.of}）`, of: msg.of, done: msg.step, text: '已记录，请抬起手指' });
+      }
+      break;
+    case 'retry': showFinger({ title: '本次未录入成功', text: `${msg.msg}，请抬起后重新按压`, warn: true }); break;
+    case 'match': {
+      const via = msg.via === 'ble' ? '（蓝牙）' : msg.via === 'usb' ? '（USB）' : '';
+      log('•', `识别为「${msg.name || '未命名'}」${msg.typed ? '，已执行' + via : '，未执行操作'}`);
+      break;
+    }
+    case 'nomatch': log('•', '指纹不匹配'); break;
+    case 'locked': log('•', `设备锁定中，剩余 ${msg.seconds} 秒`); break;
+    case 'factory_reset': log('•', '设备已通过 BOOT 键恢复出厂'); refresh(); break;
+    case 'summon': log('•', msg.drive ? '已打开设置盘 FINGERTYPE' : '未打开设置盘：需要用数据线连接电脑'); break;
+  }
+}
+
+// ---- 连接（蓝牙为主，USB 用于开发调试） ----
+function onLine(line) {
+  line = line.trim();
+  if (!line) return;
+  if (!otaRunning || !line.includes('"off"')) log('←', line);
+  try { handleMessage(JSON.parse(line)); } catch { /* 忽略非 JSON 行 */ }
+}
+function lineSplitter() {
+  let buf = '';
+  return (chunk) => {
+    buf += chunk;
+    let nl;
+    while ((nl = buf.indexOf('\n')) >= 0) { onLine(buf.slice(0, nl)); buf = buf.slice(nl + 1); }
+  };
+}
+function setConnInfo(html) { $('connInfo').innerHTML = html; }
+
+async function onConnected(kind) {
+  setConnInfo(`${icon(kind === 'ble' ? 'bt' : 'usb')}<span class="lbl">已通过${kind === 'ble' ? '蓝牙' : ' USB '}连接</span>`);
+  $('disconnectBtn').classList.remove('hidden');
+  $('welcome').classList.add('hidden');
+  $('app').classList.remove('hidden');
+  await refresh();
+}
+
+function step(label, promise, ms = 15000) {
+  setConnInfo(`<span class="lbl">${esc(label)}…</span>`);
+  log('…', label);
+  return Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error(`${label}超时（${ms / 1000} 秒）`)), ms))]);
+}
+
+async function connectBle() {
+  let device;
+  try {
+    device = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: 'Fingertype' }], optionalServices: [CFG_SERVICE] });
+  } catch (e) {
+    if (e.name !== 'NotFoundError') toast('无法打开蓝牙设备列表：' + e.message, true);
+    return;  // NotFoundError 在这里表示用户点了取消
+  }
+  try {
+    device.addEventListener('gattserverdisconnected', onDisconnected);
+    const gatt = await step('正在连接', device.gatt.connect());
+    let svc;
+    try {
+      svc = await step('正在读取设备', gatt.getPrimaryService(CFG_SERVICE));
+    } catch (e) {
+      if (e.name === 'NotFoundError') throw new Error('未找到设置服务。请重新给设备通电后再试；如仍失败，在「系统设置 › 蓝牙」中忽略 Fingertype 并重新配对。');
+      throw e;
+    }
+    const rx = await svc.getCharacteristic(CFG_RX);
+    const tx = await svc.getCharacteristic(CFG_TX);
+    const decoder = new TextDecoder();
+    const feed = lineSplitter();
+    tx.addEventListener('characteristicvaluechanged', (e) => feed(decoder.decode(e.target.value, { stream: true })));
+    await step('正在建立通道', tx.startNotifications());
+    const encoder = new TextEncoder();
+    link = {
+      kind: 'ble',
+      async write(text, fast = false) {
+        const bytes = encoder.encode(text);
+        if (fast && rx.properties.writeWithoutResponse) {  // 升级固件：无应答写入快很多，每段都等设备回复，不会写爆缓冲
+          for (let i = 0; i < bytes.length; i += BLE_FAST_CHUNK) await rx.writeValueWithoutResponse(bytes.slice(i, i + BLE_FAST_CHUNK));
+          return;
+        }
+        for (let i = 0; i < bytes.length; i += BLE_CHUNK) await rx.writeValueWithResponse(bytes.slice(i, i + BLE_CHUNK));
+      },
+      close() { device.gatt.disconnect(); },
+    };
+    await onConnected('ble');
+  } catch (e) {
+    log('!', `蓝牙连接失败：${e.name}: ${e.message}`);
+    try { device?.gatt.disconnect(); } catch {}
+    onDisconnected();
+    tell('蓝牙连接失败', `${e.message}\n\n请确认：设备已通电；已在「系统设置 › 蓝牙」中配对；Chrome 已获得蓝牙权限（系统设置 › 隐私与安全性 › 蓝牙）。`);
+  }
+}
+
+async function connectUsb() {
+  try {
+    // 0x2886：Seeed（XIAO 固件的 USB 厂商编号）；0x303a：乐鑫（其他 ESP32 开发板）
+    port = await navigator.serial.requestPort({ filters: [{ usbVendorId: 0x2886 }, { usbVendorId: 0x303a }] });
+    await port.open({ baudRate: 115200 });
+    // 固定 DTR=1、RTS=0：ESP32 的 USB 串口在某些 DTR/RTS 组合下会重启进刷机模式
+    await port.setSignals({ dataTerminalReady: true, requestToSend: false });
+    const writer = port.writable.getWriter();
+    const encoder = new TextEncoder();
+    link = {
+      kind: 'usb',
+      write: (text) => writer.write(encoder.encode(text)),
+      async close() {
+        try { await reader?.cancel(); } catch {}
+        try { await pipeDone; } catch {}
+        try { writer.releaseLock(); } catch {}
+        try { await port?.close(); } catch {}
+      },
+    };
+    usbReadLoop();
+    await onConnected('usb');
+  } catch (e) {
+    if (e.name !== 'NotFoundError') toast('USB 连接失败：' + e.message, true);
+  }
+}
+
+async function usbReadLoop() {
+  const decoder = new TextDecoderStream();
+  pipeDone = port.readable.pipeTo(decoder.writable).catch(() => {});
+  reader = decoder.readable.getReader();
+  const feed = lineSplitter();
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      feed(value);
+    }
+  } catch (e) {
+    log('!', '读取中断：' + e.message);
+  }
+  onDisconnected();
+}
+
+async function disconnect() {
+  const l = link;
+  link = null;
+  try { await l?.close(); } catch {}
+  onDisconnected();
+}
+
+function onDisconnected() {
+  link = null; reader = null; port = null;
+  for (const done of pending.values()) done({ ok: false, error: '设备已断开' });
+  pending.clear();
+  hideFinger();
+  setConnInfo('<span class="lbl">未连接</span>');
+  $('disconnectBtn').classList.add('hidden');
+  $('app').classList.add('hidden');
+  $('welcome').classList.remove('hidden');
+}
+
+async function refresh() {
+  let res;
+  try { res = await send('info', {}, 10000); } catch (e) { toast(e.message, true); return; }
+  if (!res.ok) return;
+  state = res;
+  if (state.summonEffective === undefined) state.summonEffective = state.summonFinger;  // 兼容旧固件
+  render();
+}
+
+// ---- 操作：密码 / 快捷键 / 不执行 ----
+// 修饰键位与 USB HID 一致：⌃=1 ⇧=2 ⌥=4 ⌘=8；按键为 HID 键码
+const MODS = [
+  { bit: 1, sym: '⌃', name: 'Control' },
+  { bit: 4, sym: '⌥', name: 'Option' },
+  { bit: 2, sym: '⇧', name: 'Shift' },
+  { bit: 8, sym: '⌘', name: 'Command' },
+];
+const PRESETS = [
+  { mod: 9, key: 0x14, note: '锁定屏幕' },
+  { mod: 8, key: 0x2C, note: '聚焦搜索' },
+  { mod: 1, key: 0x2C, note: '切换输入法' },
+  { mod: 10, key: 0x20, note: '截取全屏' },
+  { mod: 10, key: 0x21, note: '截取区域' },
+  { mod: 11, key: 0x21, note: '截取区域到剪贴板' },
+  { mod: 10, key: 0x22, note: '截屏与录屏工具' },
+  { mod: 8, key: 0x2B, note: '切换到上一个应用' },
+  { mod: 1, key: 0x52, note: '调度中心' },
+  { mod: 1, key: 0x50, note: '切换到左侧桌面' },
+  { mod: 1, key: 0x4F, note: '切换到右侧桌面' },
+  { mod: 9, key: 0x09, note: '进入 / 退出全屏' },
+  { mod: 8, key: 0x0B, note: '隐藏当前应用' },
+  { mod: 12, key: 0x0B, note: '隐藏其他应用' },
+  { mod: 8, key: 0x1A, note: '关闭当前窗口' },
+  { mod: 8, key: 0x14, note: '退出当前应用' },
+  { mod: 12, key: 0x29, note: '强制退出应用' },
+  { mod: 12, key: 0x07, note: '显示 / 隐藏程序坞' },
+  { mod: 9, key: 0x2C, note: '表情与符号' },
+  { mod: 10, key: 0x37, note: '显示 / 隐藏隐藏文件（访达）' },
+];
+const KEYS = (() => {
+  const m = {};
+  for (let i = 0; i < 26; i++) { const ch = String.fromCharCode(65 + i); m['Key' + ch] = { hid: 0x04 + i, label: ch }; }
+  for (let i = 1; i <= 9; i++) m['Digit' + i] = { hid: 0x1D + i, label: String(i) };
+  m.Digit0 = { hid: 0x27, label: '0' };
+  for (let i = 1; i <= 12; i++) m['F' + i] = { hid: 0x39 + i, label: 'F' + i };
+  Object.assign(m, {
+    Enter: { hid: 0x28, label: '↩' }, Escape: { hid: 0x29, label: 'Esc' }, Backspace: { hid: 0x2A, label: '⌫' },
+    Tab: { hid: 0x2B, label: 'Tab' }, Space: { hid: 0x2C, label: 'Space' }, Minus: { hid: 0x2D, label: '-' },
+    Equal: { hid: 0x2E, label: '=' }, BracketLeft: { hid: 0x2F, label: '[' }, BracketRight: { hid: 0x30, label: ']' },
+    Backslash: { hid: 0x31, label: '\\' }, Semicolon: { hid: 0x33, label: ';' }, Quote: { hid: 0x34, label: "'" },
+    Backquote: { hid: 0x35, label: '`' }, Comma: { hid: 0x36, label: ',' }, Period: { hid: 0x37, label: '.' },
+    Slash: { hid: 0x38, label: '/' }, Home: { hid: 0x4A, label: 'Home' }, PageUp: { hid: 0x4B, label: 'PgUp' },
+    Delete: { hid: 0x4C, label: '⌦' }, End: { hid: 0x4D, label: 'End' }, PageDown: { hid: 0x4E, label: 'PgDn' },
+    ArrowRight: { hid: 0x4F, label: '→' }, ArrowLeft: { hid: 0x50, label: '←' },
+    ArrowDown: { hid: 0x51, label: '↓' }, ArrowUp: { hid: 0x52, label: '↑' },
+  });
+  return m;
+})();
+const KEY_LABEL = Object.fromEntries(Object.values(KEYS).map((k) => [k.hid, k.label]));
+
+const comboLabel = (mod, key) => MODS.filter((m) => mod & m.bit).map((m) => m.sym).join('') + (KEY_LABEL[key] || `键码${key}`);
+const presetFor = (mod, key) => PRESETS.find((p) => p.mod === mod && p.key === key);
+const accountName = (i) => state.accounts.find((a) => a.i === i)?.name;
+const fingerName = (id) => state.fingers.find((f) => f.id === id)?.name;
+
+function actionValue(action) {
+  if (!action || action.type === 'none') return 'none';
+  if (action.type === 'password') return `pw:${action.account}`;
+  return `sc:${action.mod}:${action.key}`;
+}
+
+function describeAction(value) {
+  if (value === 'none') return '识别后不执行任何操作';
+  if (value === 'custom') return '勾选修饰键，再点击右侧输入框并按下一个键';
+  const [type, a, b] = value.split(':');
+  if (type === 'pw') {
+    const name = accountName(Number(a));
+    return name ? `识别后输入「${name}」` : '关联的密码已删除，识别后不会输入';
+  }
+  const p = presetFor(Number(a), Number(b));
+  return `识别后按下 ${comboLabel(Number(a), Number(b))}（${p ? p.note : '自定义快捷键'}）`;
+}
+
+// noteId：说明文字所在元素的 id
+function actionEditorHtml(action, noteId) {
+  const cur = actionValue(action);
+  const opt = (value, label) => `<option value="${value}"${value === cur ? ' selected' : ''}>${esc(label)}</option>`;
+  const pw = state.accounts.map((a) => opt(`pw:${a.i}`, `输入「${a.name}」`)).join('');
+  const sc = PRESETS.map((p) => opt(`sc:${p.mod}:${p.key}`, `${comboLabel(p.mod, p.key)}　${p.note}`)).join('');
+  let saved = '';
+  if (cur.startsWith('sc:')) {
+    const [, m, k] = cur.split(':').map(Number);
+    if (!presetFor(m, k)) saved = opt(cur, `${comboLabel(m, k)}　自定义快捷键`);
+  }
+  return `
+    <div class="action-editor" data-note="${noteId}">
+      <div class="pick-line">
+        <select class="act" aria-label="识别后的操作">
+          ${opt('none', '不执行任何操作')}
+          <optgroup label="输入密码">${pw || '<option disabled>尚未保存密码</option>'}</optgroup>
+          <optgroup label="快捷键">${saved}${sc}<option value="custom">自定义快捷键…</option></optgroup>
+        </select>
+        <button type="button" class="btn act-test">试一下</button>
+      </div>
+      <div class="custom hidden">
+        ${MODS.map((m) => `<label class="check"><input type="checkbox" class="mod" value="${m.bit}">${m.sym} ${m.name}</label>`).join('')}
+        <input type="text" class="keycap" readonly placeholder="点击后按下一个键" data-key="">
+      </div>
+    </div>`;
+}
+
+function readAction(editor) {
+  const value = editor.querySelector('.act').value;
+  if (value === 'none') return { action: { type: 'none' } };
+  if (value.startsWith('pw:')) return { action: { type: 'password', account: Number(value.slice(3)) } };
+  if (value.startsWith('sc:')) { const [, mod, key] = value.split(':').map(Number); return { action: { type: 'shortcut', mod, key } }; }
+  const key = Number(editor.querySelector('.keycap').dataset.key);
+  if (!key) return { error: '请点击输入框并按下一个键' };
+  let mod = 0;
+  editor.querySelectorAll('.mod:checked').forEach((c) => { mod |= Number(c.value); });
+  return { action: { type: 'shortcut', mod, key } };
+}
+
+function updateEditorNote(editor) {
+  const value = editor.querySelector('.act').value;
+  editor.querySelector('.custom').classList.toggle('hidden', value !== 'custom');
+  editor.querySelector('.act-test').classList.toggle('hidden', value === 'none' || value.startsWith('pw:'));
+  const noteEl = document.getElementById(editor.dataset.note);
+  if (!noteEl) return;
+  let note = describeAction(value);
+  if (value === 'custom') {
+    const r = readAction(editor);
+    if (r.action) { const p = presetFor(r.action.mod, r.action.key); note = `识别后按下 ${comboLabel(r.action.mod, r.action.key)}（${p ? p.note : '自定义快捷键'}）`; }
+  }
+  noteEl.textContent = note;
+}
+
+document.addEventListener('keydown', (e) => {
+  if (!e.target.classList.contains('keycap')) return;
+  if (e.code === 'Tab' && !e.metaKey && !e.ctrlKey && !e.altKey) return;  // 保留 Tab 切换焦点
+  const k = KEYS[e.code];
+  e.preventDefault();
+  if (!k) return;
+  const editor = e.target.closest('.action-editor');
+  const held = { 1: e.ctrlKey, 2: e.shiftKey, 4: e.altKey, 8: e.metaKey };
+  if (e.ctrlKey || e.shiftKey || e.altKey || e.metaKey) editor.querySelectorAll('.mod').forEach((c) => { c.checked = held[c.value]; });
+  e.target.dataset.key = k.hid;
+  e.target.value = k.label;
+  updateEditorNote(editor);
+  editor.dispatchEvent(new Event('actionchange', { bubbles: true }));
+});
+document.addEventListener('change', (e) => {
+  const editor = e.target.closest('.action-editor');
+  if (!editor || !(e.target.classList.contains('act') || e.target.classList.contains('mod'))) return;
+  updateEditorNote(editor);
+  editor.dispatchEvent(new Event('actionchange', { bubbles: true }));
+});
+document.addEventListener('click', async (e) => {
+  const btn = e.target.closest('.act-test');
+  if (!btn) return;
+  const r = readAction(btn.closest('.action-editor'));
+  if (r.error) return toast(r.error, true);
+  if (r.action.type !== 'shortcut') return;
+  const label = comboLabel(r.action.mod, r.action.key);
+  if (!await ask('试一下快捷键', `设备会像键盘一样按下 ${label}。如果是 ⌃⌘Q，屏幕会立即锁定。`, { ok: '按下' })) return;
+  const res = await run('testShortcut', { mod: r.action.mod, key: r.action.key });
+  if (res.ok) toast(`已按下 ${label}`);
+});
+
+// ---- 渲染 ----
+function render() {
+  const notices = [];
+  if (!state.module.online) notices.push('指纹模块无响应，请检查接线。');
+  if (state.lockedSeconds > 0) notices.push(`指纹连续不匹配，设备已锁定，剩余 ${state.lockedSeconds} 秒。`);
+  $('notices').innerHTML = notices.map((n) => `<div class="notice">${icon('alert')}<span>${esc(n)}</span></div>`).join('');
+
+  renderFingers();
+  renderPasswords();
+  renderSummon();
+
+  const ble = state.ble || {};
+  $('bleStatus').innerHTML = `${ble.connected ? '<span class="ok">已连接</span>' : '<span class="off">未连接</span>'}，已配对 ${ble.bonds ?? 0} 台电脑`;
+  $('pairingStatus').textContent = ble.bonds === 0
+    ? '尚未配对任何电脑，可直接在 Mac 的「系统设置 › 蓝牙」中连接 Fingertype。'
+    : ble.pairingSeconds > 0 ? `配对已开放，剩余 ${ble.pairingSeconds} 秒。请在新电脑的「系统设置 › 蓝牙」中连接 Fingertype。`
+    : '开放后 60 秒内，可在新电脑的「系统设置 › 蓝牙」中连接 Fingertype。';
+  $('pairingBtn').disabled = ble.bonds === 0;
+
+  $('wakeDelay').value = state.wakeDelay;
+  $('devInfo').textContent = `固件 ${state.fw}，已录入 ${state.module.count} / ${state.module.capacity} 枚指纹`;
+}
+
+function renderFingers() {
+  const list = $('fingerList');
+  if (state.fingers.length === 0) {
+    list.innerHTML = '<div class="empty">尚未录入指纹。</div>';
+    return;
+  }
+  list.innerHTML = state.fingers.map((f) => `
+    <div class="row" data-id="${f.id}">
+      <div class="finger-line">
+        ${icon('finger')}
+        <input type="text" class="name" value="${esc(f.name)}" maxlength="8" aria-label="指纹名称">
+        ${actionEditorHtml(f.action, `fnote-${f.id}`)}
+        <button class="btn sm danger fp-del">删除</button>
+      </div>
+      <div class="finger-sub">
+        <span class="note" id="fnote-${f.id}"></span>
+        ${f.id === state.summonEffective ? '<span class="tag">设置入口</span>' : ''}
+        <span class="saved">已保存</span>
+      </div>
+    </div>`).join('');
+  list.querySelectorAll('.action-editor').forEach(updateEditorNote);
+}
+
+function renderSummon() {
+  const sel = $('summonSelect');
+  const fs = state.fingers;
+  const auto = state.summonFinger === -1 && state.summonEffective >= 0;
+  sel.innerHTML = (auto
+    ? `<option value="-1" selected>自动（${esc(fingerName(state.summonEffective))}）</option>`
+    : `<option value="-1"${state.summonFinger === -1 ? ' selected' : ''}>未设置</option>`) +
+    fs.map((f) => `<option value="${f.id}"${f.id === state.summonFinger ? ' selected' : ''}>${esc(f.name)}</option>`).join('');
+  sel.disabled = fs.length === 0;
+  const secs = state.summonHoldSeconds ?? 5;
+  $('summonNote').textContent = fs.length === 0
+    ? '录入指纹后可用。'
+    : `用数据线连接电脑时，使用对应指纹长按 ${secs} 秒，出现「FINGERTYPE」配置盘，打开其中的网页即可再进入设置页面。建议与常用解锁指纹不同。`;
+}
+
+const fingersBoundTo = (i) => state.fingers.filter((f) => f.action?.type === 'password' && f.action.account === i);
+
+function renderPasswords() {
+  const list = $('passwordList');
+  if (state.accounts.length === 0) {
+    list.innerHTML = `<form class="row" id="inlinePasswordForm">${passwordFormFields({})}
+      <div style="margin-top:16px"><button type="submit" class="btn primary">保存密码</button></div></form>`;
+    $('passwordFoot').classList.add('hidden');
+    $('inlinePasswordForm').onsubmit = (e) => { e.preventDefault(); savePassword(e.target, null); };
+    return;
+  }
+  $('passwordFoot').classList.toggle('hidden', state.accounts.length >= state.maxAccounts);
+  list.innerHTML = state.accounts.map((a) => {
+    const bound = fingersBoundTo(a.i);
+    const free = state.fingers.filter((f) => !bound.includes(f));
+    return `
+      <div class="row" data-i="${a.i}">
+        <div class="row-head">
+          ${icon('key')}
+          <b style="flex:1;font-size:15px">${esc(a.name)}</b>
+          ${a.enter ? '<span class="tag neutral">输入后回车</span>' : ''}
+          <button class="btn sm pw-edit">修改</button>
+          <button class="btn sm danger pw-del">删除</button>
+        </div>
+        <div class="chips">
+          ${bound.map((f) => `<span class="chip">${esc(f.name)}<button class="pw-unbind" data-fid="${f.id}" aria-label="取消关联 ${esc(f.name)}">${icon('x')}</button></span>`).join('')}
+          ${free.length ? `<select class="bindsel pw-bind" aria-label="关联指纹"><option value="">${bound.length ? '关联其他指纹…' : '关联指纹…'}</option>
+            ${free.map((f) => `<option value="${f.id}">${esc(f.name)}</option>`).join('')}</select>`
+            : (bound.length ? '' : '<span class="note" style="margin:0">录入指纹后可关联</span>')}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function passwordFormFields(a) {
+  const editing = a.i !== undefined;
+  const fingers = state.fingers.map((f) => `<option value="${f.id}">${esc(f.name)}</option>`).join('');
+  return `
+    <label class="field" style="margin-top:0"><span>名称</span>
+      <input type="text" name="name" maxlength="8" placeholder="例如：锁屏密码" value="${esc(a.name || '')}" required></label>
+    <label class="field"><span>密码</span>
+      <input type="password" name="password" autocomplete="new-password" maxlength="64"
+             placeholder="${editing ? '不修改请留空' : '输入要保存的密码'}" ${editing ? '' : 'required'}>
+      <small>仅支持英文字母、数字和英文符号</small></label>
+    <label class="check" style="margin-top:14px"><input type="checkbox" name="enter" ${a.enter !== false ? 'checked' : ''}>输入后自动按回车</label>
+    ${!editing && state.fingers.length ? `<label class="field"><span>关联指纹</span>
+      <select name="finger"><option value="">暂不关联</option>${fingers}</select></label>` : ''}`;
+}
+
+async function savePassword(form, index) {
+  const el = form.elements;
+  const name = el.namedItem('name').value.trim();
+  const password = el.namedItem('password').value;
+  const enter = el.namedItem('enter').checked;
+  if (!name) return toast('请填写名称', true);
+  if (/[^\x20-\x7e]/.test(password)) return toast(ERRORS.bad_password, true);
+  let i = index;
+  if (i === null) {
+    const used = new Set(state.accounts.map((a) => a.i));
+    i = [...Array(state.maxAccounts).keys()].find((n) => !used.has(n));
+    if (i === undefined) return toast('最多保存 4 个密码', true);
+  }
+  closeModal('passwordModal');
+  const res = await run('setAccount', { i, name, password, enter });
+  el.namedItem('password').value = '';
+  if (!res.ok) return;
+  const fid = el.namedItem('finger')?.value;
+  if (fid) {
+    const f = state.fingers.find((x) => x.id === Number(fid));
+    if (f) await run('setFinger', { fingerId: f.id, name: f.name, action: { type: 'password', account: i } });
+  }
+  toast(index === null ? `已保存「${name}」` : `已更新「${name}」`);
+  refresh();
+}
+
+function openPasswordModal(a = {}) {
+  const editing = a.i !== undefined;
+  $('passwordForm').innerHTML = `
+    <h3 id="passwordTitle">${editing ? '修改密码' : '新增密码'}</h3>
+    <p>${editing ? '可修改名称、密码和回车设置。' : '保存后可关联到指纹，识别该指纹时自动输入。'}</p>
+    ${passwordFormFields(a)}
+    <div class="actions"><button type="button" class="btn" data-close>取消</button><button type="submit" class="btn primary">保存</button></div>`;
+  $('passwordForm').onsubmit = (e) => { e.preventDefault(); savePassword(e.target, editing ? a.i : null); };
+  openModal('passwordModal');
+  $('passwordForm').elements.namedItem('name').focus();
+}
+
+// ---- 指纹列表（改名、改操作、删除都即时保存） ----
+async function saveFinger(row, action) {
+  const fingerId = Number(row.dataset.id);
+  const f = state.fingers.find((x) => x.id === fingerId);
+  const nameEl = row.querySelector('.name');
+  const name = nameEl.value.trim();
+  if (!name) { nameEl.value = f.name; return toast('名称不能为空', true); }
+  const res = await run('setFinger', { fingerId, name, action: action ?? f.action });
+  await refresh();
+  if (res.ok) flashSaved($('fingerList').querySelector(`.row[data-id="${fingerId}"] .saved`));
+}
+
+$('fingerList').addEventListener('change', (e) => { if (e.target.classList.contains('name')) saveFinger(e.target.closest('.row')); });
+$('fingerList').addEventListener('keydown', (e) => { if (e.target.classList.contains('name') && e.key === 'Enter') e.target.blur(); });
+$('fingerList').addEventListener('actionchange', (e) => {
+  const r = readAction(e.target);
+  if (r.error) return;  // 自定义快捷键还没按键，等按完再保存
+  saveFinger(e.target.closest('.row'), r.action);
+});
+$('fingerList').addEventListener('click', async (e) => {
+  if (!e.target.closest('.fp-del')) return;
+  const f = state.fingers.find((x) => x.id === Number(e.target.closest('.row').dataset.id));
+  if (!await ask('删除指纹', `确定删除「${f.name}」？删除后需要重新录入。`, { ok: '删除', danger: true })) return;
+  if ((await run('delFinger', { fingerId: f.id })).ok) { toast(`已删除「${f.name}」`); refresh(); }
+});
+
+$('summonSelect').onchange = async (e) => {
+  const res = await run('setSummon', { fingerId: Number(e.target.value) });
+  await refresh();
+  if (res.ok) flashSaved($('summonSaved'));
+};
+
+// ---- 密码列表 ----
+$('passwordList').addEventListener('click', async (e) => {
+  const row = e.target.closest('.row[data-i]');
+  if (!row) return;
+  const a = state.accounts.find((x) => x.i === Number(row.dataset.i));
+  if (e.target.closest('.pw-edit')) return openPasswordModal(a);
+  if (e.target.closest('.pw-del')) {
+    const bound = fingersBoundTo(a.i);
+    const extra = bound.length ? `\n关联的指纹（${bound.map((f) => f.name).join('、')}）将不再输入任何内容。` : '';
+    if (!await ask('删除密码', `确定删除「${a.name}」？${extra}`, { ok: '删除', danger: true })) return;
+    if ((await run('delAccount', { i: a.i })).ok) {
+      for (const f of bound) await run('setFinger', { fingerId: f.id, name: f.name, action: { type: 'none' } });
+      toast(`已删除「${a.name}」`);
+      refresh();
+    }
+    return;
+  }
+  const unbind = e.target.closest('.pw-unbind');
+  if (unbind) {
+    const f = state.fingers.find((x) => x.id === Number(unbind.dataset.fid));
+    if ((await run('setFinger', { fingerId: f.id, name: f.name, action: { type: 'none' } })).ok) refresh();
+  }
+});
+$('passwordList').addEventListener('change', async (e) => {
+  if (!e.target.classList.contains('pw-bind') || !e.target.value) return;
+  const i = Number(e.target.closest('.row').dataset.i);
+  const f = state.fingers.find((x) => x.id === Number(e.target.value));
+  const prev = f.action?.type === 'password' ? accountName(f.action.account) : null;
+  if (prev && !await ask('更改关联', `「${f.name}」当前关联的是「${prev}」，改为「${accountName(i)}」？`, { ok: '更改' })) { e.target.value = ''; return; }
+  if ((await run('setFinger', { fingerId: f.id, name: f.name, action: { type: 'password', account: i } })).ok) {
+    toast(`「${f.name}」已关联「${accountName(i)}」`);
+    refresh();
+  }
+});
+$('addPasswordBtn').onclick = () => openPasswordModal();
+
+// ---- 录入新指纹（默认：不执行任何操作） ----
+$('addFingerBtn').onclick = () => {
+  $('enrollName').value = '';
+  $('enrollAction').innerHTML = actionEditorHtml({ type: 'none' }, 'enrollNote') +
+    '<small class="note" id="enrollNote" style="display:block"></small>';
+  updateEditorNote($('enrollAction').querySelector('.action-editor'));
+  openModal('enrollModal');
+  $('enrollName').focus();
+};
+
+$('enrollForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const name = $('enrollName').value.trim();
+  if (!name) return toast('请填写名称', true);
+  const r = readAction($('enrollAction').querySelector('.action-editor'));
+  if (r.error) return toast(r.error, true);
+  closeModal('enrollModal');
+  const res = await run('enroll', { name, action: r.action });
+  if (!res.ok) return;
+  toast(`已录入「${name}」`);
+  refresh();
+};
+
+$('identifyBtn').onclick = async () => {
+  const res = await send('identify');
+  hideFinger();
+  if (res.error === 'cancelled') return;
+  if (res.ok) toast(`识别为「${res.name || '未命名'}」，匹配度 ${res.score}`);
+  else toast(errorText(res), true);
+  refresh();
+};
+
+// ---- 蓝牙、高级、重置 ----
+$('pairingBtn').onclick = async () => {
+  const res = await run('pairing');
+  if (res.ok) { toast(`配对已开放 ${res.seconds} 秒`); refresh(); }
+};
+$('wakeDelay').onchange = async (e) => {
+  const res = await run('settings', { wakeDelay: Number(e.target.value) });
+  await refresh();
+  if (res.ok) flashSaved($('wakeSaved'));
+};
+$('clearBondsBtn').onclick = async () => {
+  if (!await ask('解除所有配对', '设备将忘记所有已配对的电脑，之后需重新配对才能使用蓝牙输入。建议同时在 Mac 的「系统设置 › 蓝牙」中忽略 Fingertype。', { ok: '解除', danger: true })) return;
+  if ((await run('clearBonds')).ok) { toast('已解除所有配对'); refresh(); }
+};
+$('resetBtn').onclick = async () => {
+  if (!await ask('恢复出厂设置', '将清空设备上的全部指纹、密码与蓝牙配对，此操作不可撤销。', { ok: '恢复出厂', danger: true })) return;
+  if ((await run('reset')).ok) { toast('已恢复出厂设置'); refresh(); }
+};
+
+// ---- 升级固件：导入编译生成的 firmware.bin ----
+const FW_MARK = new TextEncoder().encode('FTYPFW1:');  // 与固件 config.h 的 FIRMWARE_MARKER 一致
+let otaRunning = false, otaCancel = false;
+
+// 在固件文件里找识别标记，读出后面的版本号；不是本项目的固件返回 null
+function findFwVersion(bytes) {
+  outer: for (let i = 0; i + FW_MARK.length < bytes.length; i++) {
+    for (let j = 0; j < FW_MARK.length; j++) if (bytes[i + j] !== FW_MARK[j]) continue outer;
+    let k = i + FW_MARK.length, v = '';
+    while (k < bytes.length && bytes[k] !== 0 && v.length < 20) v += String.fromCharCode(bytes[k++]);
+    if (/^\d/.test(v)) return v;
+  }
+  return null;
+}
+const toB64 = (u8) => btoa(String.fromCharCode(...u8));
+
+function showOta(done, total) {
+  const pct = Math.floor(done * 100 / total);
+  $('otaBar').style.width = pct + '%';
+  $('otaText').textContent = `已发送 ${pct}%（${Math.round(done / 1024)} / ${Math.round(total / 1024)} KB）。请保持页面打开、设备通电。`;
+  $('otaCancelBtn').disabled = false;
+  openModal('otaModal');
+}
+$('otaCancelBtn').onclick = () => { otaCancel = true; $('otaCancelBtn').disabled = true; };
+
+$('fwBtn').onclick = () => $('fwFile').click();
+$('fwFile').onchange = async (e) => {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file || !link) return;
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const ver = bytes[0] === 0xE9 ? findFwVersion(bytes) : null;
+  if (!ver) return tell('无法使用这个文件', '这不是 Fingertype 的固件文件。请选择编译生成的 firmware.bin。');
+  const viaBle = link.kind === 'ble';
+  if (!await ask('升级固件', `当前版本 ${state.fw}，将升级到 ${ver}。\n\n通过${viaBle ? '蓝牙升级约需 1–2 分钟' : ' USB 升级约需十几秒'}，期间请保持页面打开、设备通电，完成后设备会自动重启。`, { ok: '开始升级' })) return;
+
+  const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map((b) => b.toString(16).padStart(2, '0')).join('');
+  const begin = await run('otaBegin', { size: bytes.length, sha256: hash });  // 需要先验证指纹
+  if (!begin.ok) return;
+  const chunk = begin.chunk || 1536;
+  otaRunning = true;
+  otaCancel = false;
+  showOta(0, bytes.length);
+  try {
+    let off = 0;
+    while (off < bytes.length) {
+      if (otaCancel) {
+        await send('otaAbort', {}, 5000).catch(() => {});
+        closeModal('otaModal');
+        toast('已取消升级');
+        return;
+      }
+      const res = await send('otaData', { off, d: toB64(bytes.subarray(off, off + chunk)) }, 15000);
+      if (!res.ok && !(res.error === 'ota_offset' && typeof res.off === 'number')) throw new Error(errorText(res));
+      off = res.off;  // 设备回复已写入的字节数，从这里继续
+      showOta(off, bytes.length);
+    }
+    $('otaText').textContent = '正在校验固件…';
+    $('otaCancelBtn').disabled = true;
+    const end = await send('otaEnd', {}, 20000);
+    if (!end.ok) throw new Error(errorText(end));
+  } catch (err) {
+    closeModal('otaModal');
+    if (link) send('otaAbort', {}, 5000).catch(() => {});
+    return tell('升级失败', `${err.message}\n\n设备仍在运行原来的固件，可以重新尝试。`);
+  } finally {
+    otaRunning = false;
+  }
+  closeModal('otaModal');
+  tell('升级完成', `设备正在重启进入 ${ver}，大约 5 秒后可以重新连接。\n\n配置盘里的 Settings.html 已随固件一起更新；如果你把它复制到了电脑上，请从配置盘重新复制一份，覆盖旧文件。`);
+};
+
+$('connectBleBtn').onclick = connectBle;
+$('connectUsbBtn').onclick = connectUsb;
+$('disconnectBtn').onclick = disconnect;
+
+if (!('bluetooth' in navigator)) { $('noBrowser').classList.remove('hidden'); $('connectBleBtn').disabled = true; }
+if (!('serial' in navigator)) $('connectUsbBtn').disabled = true;
+else navigator.serial.addEventListener('disconnect', (e) => { if (e.target === port) onDisconnected(); });
+</script>
+</body>
+</html>
