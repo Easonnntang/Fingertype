@@ -24,4 +24,4 @@ pio run -t upload --upload-port "$port" | grep -E "SUCCESS|FAILED|rror" | tail -
 echo "== 等设备重启 =="
 sleep 8
 py="$(brew --prefix platformio)/libexec/bin/python"
-"$py" scripts/devcmd.py '{"cmd":"fpRaw","bytes":[31,0]}' '{"cmd":"fpRaw","bytes":[29]}' '{"cmd":"info"}'
+"$py" scripts/devcmd.py '{"cmd":"info"}'

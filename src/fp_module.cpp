@@ -211,31 +211,21 @@ bool Module::isUsed(uint16_t id) {
   return bm[bit / 8] & (1 << (bit % 8));
 }
 
-int Module::firstFreeId() {
+int Module::findId(bool used) {
   uint8_t bm[32];
   for (uint16_t page = 0; page * 256 < capacity_; page++) {
     if (!readIndex(page, bm)) return -1;
     for (uint16_t bit = 0; bit < 256; bit++) {
       const uint16_t id = page * 256 + bit;
       if (id >= capacity_) return -1;
-      if (!(bm[bit / 8] & (1 << (bit % 8)))) return id;
+      if (bool(bm[bit / 8] & (1 << (bit % 8))) == used) return id;
     }
   }
   return -1;
 }
 
-int Module::firstUsedId() {
-  uint8_t bm[32];
-  for (uint16_t page = 0; page * 256 < capacity_; page++) {
-    if (!readIndex(page, bm)) return -1;
-    for (uint16_t bit = 0; bit < 256; bit++) {
-      const uint16_t id = page * 256 + bit;
-      if (id >= capacity_) return -1;
-      if (bm[bit / 8] & (1 << (bit % 8))) return id;
-    }
-  }
-  return -1;
-}
+int Module::firstFreeId() { return findId(false); }
+int Module::firstUsedId() { return findId(true); }
 
 int Module::templateCount() {
   const uint8_t p[] = {CMD_TEMPLATE_NUM};

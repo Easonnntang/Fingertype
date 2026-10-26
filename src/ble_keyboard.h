@@ -32,7 +32,4 @@ uint32_t pairingRemainingMs();
 int bondCount();
 void clearBonds();
 
-// 可打印 ASCII -> HID 键码（美式布局）。供 USB 和蓝牙共用
-bool asciiToHid(char c, uint8_t& modifier, uint8_t& keycode);
-
 }  // namespace blekb

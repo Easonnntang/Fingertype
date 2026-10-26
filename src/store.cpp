@@ -84,7 +84,6 @@ bool getAccount(int index, Account& out) {
   out = Account();
   if (index < 0 || index >= MAX_ACCOUNTS) return false;
   if (!prefs.isKey(key("a", index, "p").c_str())) return false;
-  out.used = true;
   out.name = prefs.getString(key("a", index, "n").c_str(), "");
   out.enter = prefs.getBool(key("a", index, "e").c_str(), true);
   return true;

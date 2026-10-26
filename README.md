@@ -2,15 +2,23 @@
 
 **按一下手指，它替你把电脑的登录密码打出来。**
 
-Fingertype 是一个自己动手做的桌面指纹解锁器。对电脑来说，它就是一个蓝牙键盘：识别到你的指纹，就像键盘一样输入你事先存好的密码；也可以绑定成一个快捷键，比如一键锁屏。适合外接键盘没有指纹识别、笔记本合盖当主机这类场景。
+MacBook 作为主机使用、合盖时，就没法用指纹解锁了；Mac mini 和 Mac Studio 也一样。如果不买 Apple 带触控 ID 的妙控键盘，每次点亮屏幕都要手动输入密码。妙控键盘太贵，手动输入太繁琐，所以 Fingertype 来了。
 
-- 电脑上**不用装任何 App**，设置全在一个本地网页里完成，不连接任何服务器。
-- 指纹的录入和比对都在**指纹模块内部**完成，指纹数据不会离开模块。
-- 密码**只能写入、不能读出**，设备不会把密码传回电脑。
-- 日常只靠**蓝牙**，Type-C 只接充电头供电；插着数据线时自动改用 USB 键盘输出。
-- 固件可以直接在设置网页里**导入升级**，蓝牙或 USB 都行。
+看到市面上的同类产品后，我决定自己做一个完全开源的版本。全程由 Claude 制作，包括外壳的建模。
 
-> English: Fingertype is a DIY fingerprint "key" for your computer. It acts as a Bluetooth keyboard and types a stored password (or sends a shortcut) when it recognizes your finger. Built on Seeed XIAO ESP32S3 + HLK-ZW111. All setup happens in a local web page via Web Bluetooth. Documentation is currently in Chinese.
+对于 Mac 来说，它就是一个蓝牙键盘：识别到录入的指纹后，就像键盘一样输入事先存好的密码，然后自己按回车，一按即可。同时也可以绑定各种快捷键，比如锁屏、截图。
+
+- 不用装任何 App，设置全在一个本地网页里完成。
+- 指纹的录入和比对都在指纹模块内部完成，指纹数据不会离开模块。
+- 密码只能写入、不能读出，设备不会把密码传回电脑。
+- 日常靠蓝牙通信，Type-C 只接充电头供电；插着数据线时自动改用 USB 键盘输出。
+- 固件可以直接在设置网页里导入升级，蓝牙或 USB 都行。
+- 没有做自带电池的版本，因为不想让它体积再变大。当然你们想的话，可以自己捣鼓。
+- 本体就是一块 ESP32 加一个指纹识别模块。如果愿意，可以用 3D 打印机给它做出各种外观。
+- 可以直接刷入我的固件，也可以让你的 AI 助手帮你从头写一个，把这个项目丢给它就行。
+- 我是一个完完全全不懂编程和建模的人，有任何问题请直接告诉我。
+
+> English: Fingertype is a fully open-source fingerprint unlocker for Macs used with the lid closed, or for a Mac mini / Mac Studio without a Touch ID keyboard. To the Mac it is just a Bluetooth keyboard: when it recognizes your finger, it types your stored password and presses Return. You can also bind fingers to shortcuts such as lock screen or screenshot. Built on a Seeed XIAO ESP32S3 + HLK-ZW111 fingerprint module; all setup happens in a local web page, no app needed. The whole project, including the 3D-printed case, was made with Claude by someone with no programming or modeling background. Documentation is currently in Chinese.
 
 **使用前请先阅读下面的[安全说明](#安全说明请在使用前阅读)。**
 
@@ -182,8 +190,8 @@ src/ble_keyboard.*    蓝牙键盘、配对限制和蓝牙配置通道
 src/config_drive.*    只读配置盘（FAT12，按需生成）
 src/ota.*             在线升级固件
 src/main.cpp          识别、输入、配置命令
-scripts/embed_web.py  编译前把 web/index.html 嵌入固件
-web/index.html        设置网页（Web Bluetooth；也可以用 Web Serial 通过 USB 连接）
+scripts/embed_web.py  编译前把 web/Settings.html 嵌入固件
+web/Settings.html     设置网页（Web Bluetooth；也可以用 Web Serial 通过 USB 连接）
 ```
 
 网页和设备之间是一行一个的 JSON 命令，蓝牙和 USB 串口内容完全相同，可以在设置网页底部的「通信日志」里看到。

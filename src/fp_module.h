@@ -29,7 +29,7 @@ enum Code : uint8_t {
 
 const char* describe(uint8_t code);
 
-// LED 光圈控制（ControlBLN 0x3C）。不同固件版本颜色位可能不同，到货后实测调整。
+// LED 光圈控制（ControlBLN 0x3C）。颜色编号已在 HLK-ZW111 上实测确认。
 enum LedMode : uint8_t { LED_BREATH = 1, LED_FLASH = 2, LED_ON = 3, LED_OFF = 4 };
 enum LedColor : uint8_t { COLOR_NONE = 0, COLOR_BLUE = 1, COLOR_GREEN = 2, COLOR_RED = 4 };
 
@@ -56,28 +56,13 @@ class Module {
   int templateCount();                      // 读取失败返回 -1
   void led(LedMode mode, LedColor color, uint8_t cycles = 0);
 
-  // 调试用：发送任意命令，返回确认码和原始回复内容
-  uint8_t raw(const uint8_t* payload, uint16_t len, uint8_t* reply, uint16_t replyCap, uint16_t* replyLen) {
-    return command(payload, len, reply, replyCap, replyLen, 2000);
-  }
-  // 调试用：在 ms 毫秒内继续读取模块主动/额外发来的回复包，返回每个包的确认码
-  int drain(uint32_t ms, uint8_t* codes, int maxCodes) {
-    int n = 0;
-    const uint32_t start = millis();
-    while (millis() - start < ms && n < maxCodes) {
-      uint8_t buf[64];
-      uint16_t got = 0;
-      if (readPacket(buf, sizeof(buf), got, ms - (millis() - start)) && got >= 1) codes[n++] = buf[0];
-    }
-    return n;
-  }
-
  private:
   uint8_t command(const uint8_t* payload, uint16_t len, uint8_t* reply = nullptr,
                   uint16_t replyCap = 0, uint16_t* replyLen = nullptr, uint32_t timeoutMs = 1000,
                   int expectLen = -1);
   bool readPacket(uint8_t* buf, uint16_t cap, uint16_t& len, uint32_t timeoutMs);
   void drainQuiet();
+  int findId(bool used);  // 第一个已用 / 空闲的编号，没有返回 -1
 
   HardwareSerial* serial_ = nullptr;
   bool online_ = false;

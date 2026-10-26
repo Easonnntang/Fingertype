@@ -68,7 +68,7 @@ bool write(size_t offset, const String& base64, size_t& written, const char*& er
   written = done;
   if (!running) { error = "ota_not_started"; return false; }
   if (offset != done) { error = "ota_offset"; return false; }  // 网页会按回复里的 off 重发
-  static uint8_t buf[OTA_CHUNK + 4];
+  static uint8_t buf[OTA_CHUNK_MAX + 4];
   size_t n = 0;
   if (mbedtls_base64_decode(buf, sizeof(buf), &n, reinterpret_cast<const uint8_t*>(base64.c_str()), base64.length()) != 0 ||
       n == 0 || done + n > total) {

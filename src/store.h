@@ -11,7 +11,6 @@
 namespace store {
 
 struct Account {
-  bool used = false;
   String name;
   bool enter = true;  // 输入密码后是否自动按回车
 };
@@ -38,7 +37,7 @@ void setFinger(uint16_t id, const String& name, int8_t account, uint8_t mod = 0,
 void deleteFinger(uint16_t id);
 bool hasAnyFinger(uint16_t maxId);  // 设备里是否有任何指纹记录（编号 0..maxId-1）
 
-// “召唤指纹”：插着数据线时按住它几秒，配置盘才会出现。-1 表示还没设置
+// “设置入口指纹”：插着数据线时按住它 5 秒，配置盘才会出现。-1 表示还没设置
 int16_t summonFinger();
 void setSummonFinger(int16_t id);
 

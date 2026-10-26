@@ -163,8 +163,8 @@ bool sendReport(uint8_t modifier, uint8_t key) {
   delay(12);
   return true;
 }
-}  // namespace
 
+// 可打印 ASCII -> HID 键码（美式布局）
 bool asciiToHid(char c, uint8_t& modifier, uint8_t& keycode) {
   modifier = 0;
   if (c >= 'a' && c <= 'z') { keycode = 0x04 + (c - 'a'); return true; }
@@ -186,6 +186,7 @@ bool asciiToHid(char c, uint8_t& modifier, uint8_t& keycode) {
   }
   return false;
 }
+}  // namespace
 
 void begin(const char* deviceName) {
   blePrefs.begin("ftypeble", false);

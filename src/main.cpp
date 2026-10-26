@@ -2,9 +2,9 @@
 //
 // 工作方式：
 //   - 平时它是一个蓝牙键盘，Type-C 只用来供电；插着数据线连电脑时改用 USB 键盘（更快更稳）。
-//   - 按下已录入的手指 -> 模块内部比对 -> 抬起手指时执行该手指绑定的动作
-//     （输入某个密码 / 按一个快捷键）。按住“召唤指纹”数秒则改为弹出配置盘。
-//   - 配置网页（web/index.html，也嵌在配置盘里的 Settings.html）通过蓝牙或 USB 串口
+//   - 按下已录入的手指 -> 模块内部比对 -> 立即执行该手指绑定的动作（输入某个密码 / 按一个快捷键）。
+//     插着数据线时，“设置入口指纹”要等抬手才执行；按住 5 秒则改为弹出配置盘。
+//   - 配置网页（web/Settings.html，也嵌在配置盘里）通过蓝牙或 USB 串口
 //     发送一行一个的 JSON 命令。密码只能写入，设备不会把密码传回电脑。
 //     有已录入指纹时，任何修改都要先在设备上按一次已录入的手指。
 
@@ -172,7 +172,6 @@ void wakeHost() {
 
 bool usbDataConnected() { return tud_mounted() || tud_suspended(); }  // 只接充电头时为 false
 
-// 选择输出方式：蓝牙已连接 -> 蓝牙；否则插着数据线 -> USB；都没有 -> 等蓝牙重连
 // 选择输出方式：插着数据线连电脑 -> USB（最快最稳）；否则蓝牙；蓝牙暂时断开 -> 等它重连
 const char* chooseOutput() {
   if (usbDataConnected()) return "usb";
@@ -590,58 +589,6 @@ void cmdDelFinger(JsonVariantConst req) {
   reply(res, req, true);
 }
 
-// 调试用：在 seconds 秒内实时报告触摸脚电平和模块采图结果（不识别、不计失败次数）
-void cmdSensorTest(JsonVariantConst req) {
-  const uint32_t ms = min<uint32_t>(uint32_t(req["seconds"] | 10) * 1000, 30000);
-  const uint32_t start = millis();
-  int lastTouch = -1, lastImage = -1;
-  finger.led(fp::LED_BREATH, fp::COLOR_BLUE);
-  while (millis() - start < ms) {
-    const int touch = PIN_FP_TOUCH >= 0 ? digitalRead(PIN_FP_TOUCH) : -1;
-    const int image = finger.getImage();
-    if (touch != lastTouch || image != lastImage) {
-      JsonDocument ev;
-      ev["evt"] = "sensor";
-      ev["t"] = millis() - start;
-      ev["touchPin"] = touch;
-      ev["image"] = fp::describe(image);
-      send(ev);
-      lastTouch = touch;
-      lastImage = image;
-    }
-    delay(100);
-  }
-  finger.led(fp::LED_OFF, fp::COLOR_NONE);
-  JsonDocument res;
-  reply(res, req, true);
-}
-
-// 调试用：给指纹模块发原始命令，例如 {"cmd":"fpRaw","bytes":[31,0]}（0x1F 读索引表第 0 页）
-void cmdFpRaw(JsonVariantConst req) {
-  uint8_t p[16];
-  uint16_t len = 0;
-  for (JsonVariantConst b : req["bytes"].as<JsonArrayConst>()) {
-    if (len < sizeof(p)) p[len++] = b.as<uint8_t>();
-  }
-  if (len == 0) return fail(req, "bad_value");
-  uint8_t r[64];
-  uint16_t n = 0;
-  const uint8_t code = finger.raw(p, len, r, sizeof(r), &n);
-  JsonDocument res;
-  res["code"] = code;
-  res["meaning"] = fp::describe(code);
-  JsonArray data = res["data"].to<JsonArray>();
-  for (uint16_t i = 0; i < n; i++) data.add(r[i]);
-  const uint32_t listen = min<uint32_t>(req["listenMs"] | 0, 5000);
-  if (listen) {  // 继续听一段时间，看模块有没有多发回复
-    uint8_t extra[8];
-    const int k = finger.drain(listen, extra, 8);
-    JsonArray ex = res["extra"].to<JsonArray>();
-    for (int i = 0; i < k; i++) ex.add(extra[i]);
-  }
-  reply(res, req, true);
-}
-
 // 设置“召唤指纹”（fingerId = -1 表示取消）
 void cmdSetSummon(JsonVariantConst req) {
   if (!requireAuth(req)) return;
@@ -727,8 +674,10 @@ void cmdOtaBegin(JsonVariantConst req) {
   if (!requireAuth(req)) return;
   const char* error = nullptr;
   if (!ota::begin(req["size"] | 0, req["sha256"] | "", error)) return fail(req, error);
+  // 网页可以要更大的分段（USB 连接时用，命令次数少、快很多）；蓝牙连接时网页不要，用默认值
+  const size_t chunk = constrain(size_t(req["chunk"] | int(OTA_CHUNK)), size_t(512), OTA_CHUNK_MAX);
   JsonDocument res;
-  res["chunk"] = OTA_CHUNK;
+  res["chunk"] = chunk;
   reply(res, req, true);
 }
 
@@ -805,7 +754,7 @@ void handleLine(const String& line) {
 
 void dispatch(JsonVariantConst req, const String& cmd) {
   const bool needsModule = cmd == "auth" || cmd == "enroll" || cmd == "setFinger" || cmd == "delFinger" ||
-                           cmd == "identify" || cmd == "reset" || cmd == "sensorTest" || cmd == "fpRaw";
+                           cmd == "identify" || cmd == "reset";
   if (needsModule && !finger.online() && !finger.probe()) return fail(req, "module_offline");
 
   if (cmd == "info") cmdInfo(req);
@@ -821,8 +770,6 @@ void dispatch(JsonVariantConst req, const String& cmd) {
   else if (cmd == "typeTest") cmdTypeTest(req);
   else if (cmd == "testShortcut") cmdTestShortcut(req);
   else if (cmd == "setSummon") cmdSetSummon(req);
-  else if (cmd == "sensorTest") cmdSensorTest(req);
-  else if (cmd == "fpRaw") cmdFpRaw(req);
   else if (cmd == "pairing") cmdPairing(req);
   else if (cmd == "clearBonds") cmdClearBonds(req);
   else if (cmd == "reset") cmdReset(req);
@@ -847,7 +794,7 @@ bool readCommandLine(String& out) {
         lineBuf = "";
         return true;
       }
-    } else if (lineBuf.length() < 4096) {  // 升级固件时一行约 2KB
+    } else if (lineBuf.length() < USB_LINE_MAX) {  // 升级固件时一行最长约 5.5KB
       lineBuf += c;
     } else {
       lineBuf = "";  // 太长的行直接丢弃
@@ -914,7 +861,9 @@ void setup() {
   USB.manufacturerName(PRODUCT_NAME " DIY");
   USB.usbAttributes(TUSB_DESC_CONFIG_ATT_SELF_POWERED | TUSB_DESC_CONFIG_ATT_REMOTE_WAKEUP);
   Keyboard.begin();
+  Cdc.setRxBufferSize(USB_LINE_MAX * 2);  // 升级固件时网页会连发两段，一次能收下，不用等主循环一点点读
   Cdc.begin();
+  lineBuf.reserve(USB_LINE_MAX);  // 预留好空间，免得逐字节拼接时反复重新分配
   drive::begin();
   USB.begin();
 
@@ -942,7 +891,7 @@ void loop() {
   autoShowDrive();
   ota::loop();
   if (ota::active()) {  // 升级固件期间不响应指纹，避免把密码打进别的窗口
-    delay(2);
+    if (!Cdc.available()) delay(1);  // 有数据就马上接着处理，没数据才歇一下
     return;
   }
 

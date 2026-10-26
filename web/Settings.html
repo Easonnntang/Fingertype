@@ -116,14 +116,11 @@
   .action-editor .pick-line { display: flex; gap: 8px; }
   .action-editor select { flex: 1; min-width: 0; }
 
-  .chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 10px 0 0 calc(var(--icon) + var(--icon-gap)); }
-  .chip { display: inline-flex; align-items: center; gap: 4px; height: 26px; padding: 0 4px 0 10px; border-radius: 999px;
-          background: var(--raised); font-size: 13px; }
-  .chip button { width: 20px; height: 20px; border: 0; border-radius: 50%; background: transparent; color: var(--muted); cursor: pointer;
-                 display: inline-flex; align-items: center; justify-content: center; }
-  .chip button:hover { background: var(--active); color: var(--text); }
-  .chip button svg.i { width: 12px; height: 12px; }
-  .bindsel { height: 28px; font-size: 13px; color: var(--muted); width: auto; }
+  /* 密码行第二行：左边是已关联的指纹，右边的下拉框和设置项右侧的控件列对齐 */
+  .pw-sub { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+            margin: 10px 0 0 calc(var(--icon) + var(--icon-gap)); }
+  .pw-sub .note { margin: 0; }
+  .pw-sub select { width: var(--ctl); flex: none; }
 
   /* 快捷键自定义 */
   .custom { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 10px; }
@@ -247,7 +244,7 @@
     <section class="section">
       <div>
         <h2>指纹管理</h2>
-        <p class="desc">为每枚指纹指定识别后执行的操作：输入密码，或触发快捷键。</p>
+        <p class="desc">添加录入以及删除指纹，并为每个指纹绑定对应操作，如：输入密码，触发快捷键（可自定义）。</p>
       </div>
       <div class="panel">
         <div id="fingerList"></div>
@@ -955,11 +952,13 @@ function renderPasswords() {
           <button class="btn sm pw-edit">修改</button>
           <button class="btn sm danger pw-del">删除</button>
         </div>
-        <div class="chips">
-          ${bound.map((f) => `<span class="chip">${esc(f.name)}<button class="pw-unbind" data-fid="${f.id}" aria-label="取消关联 ${esc(f.name)}">${icon('x')}</button></span>`).join('')}
-          ${free.length ? `<select class="bindsel pw-bind" aria-label="关联指纹"><option value="">${bound.length ? '关联其他指纹…' : '关联指纹…'}</option>
-            ${free.map((f) => `<option value="${f.id}">${esc(f.name)}</option>`).join('')}</select>`
-            : (bound.length ? '' : '<span class="note" style="margin:0">录入指纹后可关联</span>')}
+        <div class="pw-sub">
+          <span class="note">${bound.length ? `已关联：${bound.map((f) => esc(f.name)).join('、')}`
+            : state.fingers.length ? '未关联指纹' : '录入指纹后可关联'}</span>
+          ${free.length || bound.length ? `<select class="pw-bind" aria-label="关联指纹">
+            <option value="">${!free.length ? '取消关联…' : bound.length ? '关联其他指纹…' : '关联指纹…'}</option>
+            ${free.map((f) => `<option value="b:${f.id}">${esc(f.name)}</option>`).join('')}
+            ${bound.map((f) => `<option value="u:${f.id}">取消关联：${esc(f.name)}</option>`).join('')}</select>` : ''}
         </div>
       </div>`;
   }).join('');
@@ -1067,16 +1066,19 @@ $('passwordList').addEventListener('click', async (e) => {
     }
     return;
   }
-  const unbind = e.target.closest('.pw-unbind');
-  if (unbind) {
-    const f = state.fingers.find((x) => x.id === Number(unbind.dataset.fid));
-    if ((await run('setFinger', { fingerId: f.id, name: f.name, action: { type: 'none' } })).ok) refresh();
-  }
 });
 $('passwordList').addEventListener('change', async (e) => {
   if (!e.target.classList.contains('pw-bind') || !e.target.value) return;
   const i = Number(e.target.closest('.row').dataset.i);
-  const f = state.fingers.find((x) => x.id === Number(e.target.value));
+  const [op, id] = e.target.value.split(':');  // b：关联这枚指纹；u：取消它的关联
+  const f = state.fingers.find((x) => x.id === Number(id));
+  if (op === 'u') {
+    if ((await run('setFinger', { fingerId: f.id, name: f.name, action: { type: 'none' } })).ok) {
+      toast(`「${f.name}」已取消关联`);
+      refresh();
+    } else e.target.value = '';
+    return;
+  }
   const prev = f.action?.type === 'password' ? accountName(f.action.account) : null;
   if (prev && !await ask('更改关联', `「${f.name}」当前关联的是「${prev}」，改为「${accountName(i)}」？`, { ok: '更改' })) { e.target.value = ''; return; }
   if ((await run('setFinger', { fingerId: f.id, name: f.name, action: { type: 'password', account: i } })).ok) {
@@ -1162,7 +1164,12 @@ function showOta(done, total) {
 }
 $('otaCancelBtn').onclick = () => { otaCancel = true; $('otaCancelBtn').disabled = true; };
 
-$('fwBtn').onclick = () => $('fwFile').click();
+// 蓝牙升级很慢（实测约 30 分钟），先提示改用有线；坚持用蓝牙时才弹出选文件
+$('fwBtn').onclick = async () => {
+  if (link?.kind === 'ble' &&
+      await ask('升级固件', '蓝牙固件升级耗时约30分钟，建议使用有线升级。', { ok: '使用有线', cancel: '继续升级' })) return;
+  $('fwFile').click();
+};
 $('fwFile').onchange = async (e) => {
   const file = e.target.files[0];
   e.target.value = '';
@@ -1171,17 +1178,20 @@ $('fwFile').onchange = async (e) => {
   const ver = bytes[0] === 0xE9 ? findFwVersion(bytes) : null;
   if (!ver) return tell('无法使用这个文件', '这不是 Fingertype 的固件文件。请选择编译生成的 firmware.bin。');
   const viaBle = link.kind === 'ble';
-  if (!await ask('升级固件', `当前版本 ${state.fw}，将升级到 ${ver}。\n\n通过${viaBle ? '蓝牙升级约需 1–2 分钟' : ' USB 升级约需十几秒'}，期间请保持页面打开、设备通电，完成后设备会自动重启。`, { ok: '开始升级' })) return;
+  if (!await ask('升级固件', `当前版本 ${state.fw}，将升级到 ${ver}。\n\n通过${viaBle ? '蓝牙升级约需 30 分钟' : ' USB 升级约需十几秒'}，期间请保持页面打开、设备通电，完成后设备会自动重启。`, { ok: '开始升级' })) return;
 
   const hash = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))].map((b) => b.toString(16).padStart(2, '0')).join('');
-  const begin = await run('otaBegin', { size: bytes.length, sha256: hash });  // 需要先验证指纹
+  // 需要先验证指纹。USB 连接时要更大的分段（4KB），命令次数少很多
+  const begin = await run('otaBegin', viaBle ? { size: bytes.length, sha256: hash } : { size: bytes.length, sha256: hash, chunk: 4096 });
   if (!begin.ok) return;
   const chunk = begin.chunk || 1536;
+  const windowSize = viaBle ? 1 : 2;  // USB：连发两段，设备写闪存时下一段已经在路上
   otaRunning = true;
   otaCancel = false;
   showOta(0, bytes.length);
   try {
-    let off = 0;
+    let off = 0, next = 0;  // off：设备确认写入的字节数；next：下一段从哪里开始发
+    const inflight = [];
     while (off < bytes.length) {
       if (otaCancel) {
         await send('otaAbort', {}, 5000).catch(() => {});
@@ -1189,9 +1199,19 @@ $('fwFile').onchange = async (e) => {
         toast('已取消升级');
         return;
       }
-      const res = await send('otaData', { off, d: toB64(bytes.subarray(off, off + chunk)) }, 15000);
-      if (!res.ok && !(res.error === 'ota_offset' && typeof res.off === 'number')) throw new Error(errorText(res));
-      off = res.off;  // 设备回复已写入的字节数，从这里继续
+      while (inflight.length < windowSize && next < bytes.length) {
+        const at = next;
+        next += chunk;
+        inflight.push(send('otaData', { off: at, d: toB64(bytes.subarray(at, at + chunk)) }, 15000)
+          .catch((e) => ({ ok: false, error: e.message })));
+      }
+      const res = await inflight.shift();
+      if (!res.ok) {
+        // 一次只发一段时，设备进度和网页对不上就从设备的进度重发；连发时直接报错，重新升级即可
+        if (windowSize === 1 && res.error === 'ota_offset' && typeof res.off === 'number') { off = next = res.off; continue; }
+        throw new Error(errorText(res));
+      }
+      off = res.off;
       showOta(off, bytes.length);
     }
     $('otaText').textContent = '正在校验固件…';
